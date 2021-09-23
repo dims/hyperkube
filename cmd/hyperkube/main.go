@@ -31,15 +31,14 @@ import (
 
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/logs"
-	cloudcontrollermanager "k8s.io/kubernetes/cmd/cloud-controller-manager/app"
 	kubeapiserver "k8s.io/kubernetes/cmd/kube-apiserver/app"
 	kubecontrollermanager "k8s.io/kubernetes/cmd/kube-controller-manager/app"
 	kubeproxy "k8s.io/kubernetes/cmd/kube-proxy/app"
 	kubescheduler "k8s.io/kubernetes/cmd/kube-scheduler/app"
 	kubelet "k8s.io/kubernetes/cmd/kubelet/app"
-	_ "k8s.io/kubernetes/pkg/client/metrics/prometheus" // for client metric registration
-	kubectl "k8s.io/kubernetes/pkg/kubectl/cmd"
-	_ "k8s.io/kubernetes/pkg/version/prometheus" // for version metric registration
+	_ "k8s.io/component-base/metrics/prometheus/restclient"
+	_ "k8s.io/component-base/metrics/prometheus/version"
+	kubectl "k8s.io/kubectl/pkg/cmd"
 )
 
 func main() {
@@ -88,7 +87,6 @@ func NewHyperKubeCommand() (*cobra.Command, []func() *cobra.Command) {
 	scheduler := func() *cobra.Command { return kubescheduler.NewSchedulerCommand() }
 	kubectlCmd := func() *cobra.Command { return kubectl.NewDefaultKubectlCommand() }
 	kubelet := func() *cobra.Command { return kubelet.NewKubeletCommand() }
-	cloudController := func() *cobra.Command { return cloudcontrollermanager.NewCloudControllerManagerCommand() }
 
 	commandFns := []func() *cobra.Command{
 		apiserver,
@@ -97,7 +95,6 @@ func NewHyperKubeCommand() (*cobra.Command, []func() *cobra.Command) {
 		scheduler,
 		kubectlCmd,
 		kubelet,
-		cloudController,
 	}
 
 	cmd := &cobra.Command{

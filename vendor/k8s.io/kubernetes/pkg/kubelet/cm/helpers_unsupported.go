@@ -42,7 +42,7 @@ func MilliCPUToShares(milliCPU int64) int64 {
 }
 
 // ResourceConfigForPod takes the input pod and outputs the cgroup resource config.
-func ResourceConfigForPod(pod *v1.Pod, enforceCPULimit bool, cpuPeriod uint64) *ResourceConfig {
+func ResourceConfigForPod(pod *v1.Pod, enforceCPULimit bool, cpuPeriod uint64, enforceMemoryQoS bool) *ResourceConfig {
 	return nil
 }
 
@@ -61,7 +61,7 @@ func GetPodCgroupNameSuffix(podUID types.UID) string {
 }
 
 // NodeAllocatableRoot returns the literal cgroup path for the node allocatable cgroup
-func NodeAllocatableRoot(cgroupRoot, cgroupDriver string) string {
+func NodeAllocatableRoot(cgroupRoot string, cgroupsPerQOS bool, cgroupDriver string) string {
 	return ""
 }
 

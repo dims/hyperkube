@@ -21,13 +21,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"reflect"
 
-	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metatable "k8s.io/apimachinery/pkg/api/meta/table"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	metav1beta1 "k8s.io/apimachinery/pkg/apis/meta/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/client-go/util/jsonpath"
@@ -37,8 +37,8 @@ var swaggerMetadataDescriptions = metav1.ObjectMeta{}.SwaggerDoc()
 
 // New creates a new table convertor for the provided CRD column definition. If the printer definition cannot be parsed,
 // error will be returned along with a default table convertor.
-func New(crdColumns []apiextensions.CustomResourceColumnDefinition) (rest.TableConvertor, error) {
-	headers := []metav1beta1.TableColumnDefinition{
+func New(crdColumns []apiextensionsv1.CustomResourceColumnDefinition) (rest.TableConvertor, error) {
+	headers := []metav1.TableColumnDefinition{
 		{Name: "Name", Type: "string", Format: "name", Description: swaggerMetadataDescriptions["name"]},
 	}
 	c := &convertor{
@@ -58,7 +58,7 @@ func New(crdColumns []apiextensions.CustomResourceColumnDefinition) (rest.TableC
 		}
 
 		c.additionalColumns = append(c.additionalColumns, path)
-		c.headers = append(c.headers, metav1beta1.TableColumnDefinition{
+		c.headers = append(c.headers, metav1.TableColumnDefinition{
 			Name:        col.Name,
 			Type:        col.Type,
 			Format:      col.Format,
@@ -70,14 +70,19 @@ func New(crdColumns []apiextensions.CustomResourceColumnDefinition) (rest.TableC
 	return c, nil
 }
 
-type convertor struct {
-	headers           []metav1beta1.TableColumnDefinition
-	additionalColumns []*jsonpath.JSONPath
+type columnPrinter interface {
+	FindResults(data interface{}) ([][]reflect.Value, error)
+	PrintResults(w io.Writer, results []reflect.Value) error
 }
 
-func (c *convertor) ConvertToTable(ctx context.Context, obj runtime.Object, tableOptions runtime.Object) (*metav1beta1.Table, error) {
-	table := &metav1beta1.Table{}
-	opt, ok := tableOptions.(*metav1beta1.TableOptions)
+type convertor struct {
+	headers           []metav1.TableColumnDefinition
+	additionalColumns []columnPrinter
+}
+
+func (c *convertor) ConvertToTable(ctx context.Context, obj runtime.Object, tableOptions runtime.Object) (*metav1.Table, error) {
+	table := &metav1.Table{}
+	opt, ok := tableOptions.(*metav1.TableOptions)
 	noHeaders := ok && opt != nil && opt.NoHeaders
 	if !noHeaders {
 		table.ColumnDefinitions = c.headers
