@@ -45,16 +45,6 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}); err != nil {
 		return err
 	}
-	if err := s.AddGeneratedConversionFunc((*v1alpha1.HPAControllerConfiguration)(nil), (*config.HPAControllerConfiguration)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1alpha1_HPAControllerConfiguration_To_config_HPAControllerConfiguration(a.(*v1alpha1.HPAControllerConfiguration), b.(*config.HPAControllerConfiguration), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*config.HPAControllerConfiguration)(nil), (*v1alpha1.HPAControllerConfiguration)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_config_HPAControllerConfiguration_To_v1alpha1_HPAControllerConfiguration(a.(*config.HPAControllerConfiguration), b.(*v1alpha1.HPAControllerConfiguration), scope)
-	}); err != nil {
-		return err
-	}
 	if err := s.AddConversionFunc((*config.HPAControllerConfiguration)(nil), (*v1alpha1.HPAControllerConfiguration)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_config_HPAControllerConfiguration_To_v1alpha1_HPAControllerConfiguration(a.(*config.HPAControllerConfiguration), b.(*v1alpha1.HPAControllerConfiguration), scope)
 	}); err != nil {
@@ -96,9 +86,6 @@ func autoConvert_v1alpha1_HPAControllerConfiguration_To_config_HPAControllerConf
 	out.HorizontalPodAutoscalerDownscaleStabilizationWindow = in.HorizontalPodAutoscalerDownscaleStabilizationWindow
 	out.HorizontalPodAutoscalerDownscaleForbiddenWindow = in.HorizontalPodAutoscalerDownscaleForbiddenWindow
 	out.HorizontalPodAutoscalerTolerance = in.HorizontalPodAutoscalerTolerance
-	if err := v1.Convert_Pointer_bool_To_bool(&in.HorizontalPodAutoscalerUseRESTClients, &out.HorizontalPodAutoscalerUseRESTClients, s); err != nil {
-		return err
-	}
 	out.HorizontalPodAutoscalerCPUInitializationPeriod = in.HorizontalPodAutoscalerCPUInitializationPeriod
 	out.HorizontalPodAutoscalerInitialReadinessDelay = in.HorizontalPodAutoscalerInitialReadinessDelay
 	return nil
@@ -110,9 +97,6 @@ func autoConvert_config_HPAControllerConfiguration_To_v1alpha1_HPAControllerConf
 	out.HorizontalPodAutoscalerDownscaleForbiddenWindow = in.HorizontalPodAutoscalerDownscaleForbiddenWindow
 	out.HorizontalPodAutoscalerDownscaleStabilizationWindow = in.HorizontalPodAutoscalerDownscaleStabilizationWindow
 	out.HorizontalPodAutoscalerTolerance = in.HorizontalPodAutoscalerTolerance
-	if err := v1.Convert_bool_To_Pointer_bool(&in.HorizontalPodAutoscalerUseRESTClients, &out.HorizontalPodAutoscalerUseRESTClients, s); err != nil {
-		return err
-	}
 	out.HorizontalPodAutoscalerCPUInitializationPeriod = in.HorizontalPodAutoscalerCPUInitializationPeriod
 	out.HorizontalPodAutoscalerInitialReadinessDelay = in.HorizontalPodAutoscalerInitialReadinessDelay
 	return nil

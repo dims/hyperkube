@@ -34,12 +34,6 @@ import (
 	"k8s.io/kubernetes/pkg/controller/history"
 )
 
-// maxUpdateRetries is the maximum number of retries used for update conflict resolution prior to failure
-const maxUpdateRetries = 10
-
-// updateConflictError is the error used to indicate that the maximum number of retries against the API server have
-// been attempted and we need to back off
-var updateConflictError = fmt.Errorf("aborting update after %d attempts", maxUpdateRetries)
 var patchCodec = scheme.Codecs.LegacyCodec(apps.SchemeGroupVersion)
 
 // overlappingStatefulSets sorts a list of StatefulSets by creation timestamp, using their names as a tie breaker.
@@ -210,6 +204,10 @@ func isRunningAndReady(pod *v1.Pod) bool {
 	return pod.Status.Phase == v1.PodRunning && podutil.IsPodReady(pod)
 }
 
+func isRunningAndAvailable(pod *v1.Pod, minReadySeconds int32) bool {
+	return podutil.IsPodAvailable(pod, minReadySeconds, metav1.Now())
+}
+
 // isCreated returns true if pod has been created and is maintained by the API server
 func isCreated(pod *v1.Pod) bool {
 	return pod.Status.Phase != ""
@@ -292,12 +290,15 @@ func Match(ss *apps.StatefulSet, history *apps.ControllerRevision) (bool, error)
 // PodSpecTemplate. We can modify this later to encompass more state (or less) and remain compatible with previously
 // recorded patches.
 func getPatch(set *apps.StatefulSet) ([]byte, error) {
-	str, err := runtime.Encode(patchCodec, set)
+	data, err := runtime.Encode(patchCodec, set)
 	if err != nil {
 		return nil, err
 	}
 	var raw map[string]interface{}
-	json.Unmarshal([]byte(str), &raw)
+	err = json.Unmarshal(data, &raw)
+	if err != nil {
+		return nil, err
+	}
 	objCopy := make(map[string]interface{})
 	specCopy := make(map[string]interface{})
 	spec := raw["spec"].(map[string]interface{})
@@ -344,11 +345,12 @@ func ApplyRevision(set *apps.StatefulSet, revision *apps.ControllerRevision) (*a
 	if err != nil {
 		return nil, err
 	}
-	err = json.Unmarshal(patched, clone)
+	restoredSet := &apps.StatefulSet{}
+	err = json.Unmarshal(patched, restoredSet)
 	if err != nil {
 		return nil, err
 	}
-	return clone, nil
+	return restoredSet, nil
 }
 
 // nextRevision finds the next valid revision number based on revisions. If the length of revisions
@@ -371,6 +373,7 @@ func inconsistentStatus(set *apps.StatefulSet, status *apps.StatefulSetStatus) b
 		status.ReadyReplicas != set.Status.ReadyReplicas ||
 		status.UpdatedReplicas != set.Status.UpdatedReplicas ||
 		status.CurrentRevision != set.Status.CurrentRevision ||
+		status.AvailableReplicas != set.Status.AvailableReplicas ||
 		status.UpdateRevision != set.Status.UpdateRevision
 }
 

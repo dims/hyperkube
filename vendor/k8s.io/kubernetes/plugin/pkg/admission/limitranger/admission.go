@@ -17,13 +17,12 @@ limitations under the License.
 package limitranger
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"sort"
 	"strings"
 	"time"
-
-	"github.com/hashicorp/golang-lru"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -38,6 +37,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	api "k8s.io/kubernetes/pkg/apis/core"
+	"k8s.io/utils/lru"
 )
 
 const (
@@ -102,12 +102,12 @@ func (l *LimitRanger) ValidateInitialization() error {
 }
 
 // Admit admits resources into cluster that do not violate any defined LimitRange in the namespace
-func (l *LimitRanger) Admit(a admission.Attributes, o admission.ObjectInterfaces) (err error) {
+func (l *LimitRanger) Admit(ctx context.Context, a admission.Attributes, o admission.ObjectInterfaces) (err error) {
 	return l.runLimitFunc(a, l.actions.MutateLimit)
 }
 
 // Validate admits resources into cluster that do not violate any defined LimitRange in the namespace
-func (l *LimitRanger) Validate(a admission.Attributes, o admission.ObjectInterfaces) (err error) {
+func (l *LimitRanger) Validate(ctx context.Context, a admission.Attributes, o admission.ObjectInterfaces) (err error) {
 	return l.runLimitFunc(a, l.actions.ValidateLimit)
 }
 
@@ -166,7 +166,7 @@ func (l *LimitRanger) GetLimitRanges(a admission.Attributes) ([]*corev1.LimitRan
 			// If there is already in-flight List() for a given namespace, we should wait until
 			// it is finished and cache is updated instead of doing the same, also to avoid
 			// throttling - see #22422 for details.
-			liveList, err := l.client.CoreV1().LimitRanges(a.GetNamespace()).List(metav1.ListOptions{})
+			liveList, err := l.client.CoreV1().LimitRanges(a.GetNamespace()).List(context.TODO(), metav1.ListOptions{})
 			if err != nil {
 				return nil, admission.NewForbidden(a, err)
 			}
@@ -190,10 +190,7 @@ func (l *LimitRanger) GetLimitRanges(a admission.Attributes) ([]*corev1.LimitRan
 
 // NewLimitRanger returns an object that enforces limits based on the supplied limit function
 func NewLimitRanger(actions LimitRangerActions) (*LimitRanger, error) {
-	liveLookupCache, err := lru.New(10000)
-	if err != nil {
-		return nil, err
-	}
+	liveLookupCache := lru.New(10000)
 
 	if actions == nil {
 		actions = &DefaultLimitRangerActions{}
@@ -219,12 +216,10 @@ func defaultContainerResourceRequirements(limitRange *corev1.LimitRange) api.Res
 		limit := limitRange.Spec.Limits[i]
 		if limit.Type == corev1.LimitTypeContainer {
 			for k, v := range limit.DefaultRequest {
-				value := v.Copy()
-				requirements.Requests[api.ResourceName(k)] = *value
+				requirements.Requests[api.ResourceName(k)] = v.DeepCopy()
 			}
 			for k, v := range limit.Default {
-				value := v.Copy()
-				requirements.Limits[api.ResourceName(k)] = *value
+				requirements.Limits[api.ResourceName(k)] = v.DeepCopy()
 			}
 		}
 	}
@@ -244,14 +239,14 @@ func mergeContainerResources(container *api.Container, defaultRequirements *api.
 	for k, v := range defaultRequirements.Limits {
 		_, found := container.Resources.Limits[k]
 		if !found {
-			container.Resources.Limits[k] = *v.Copy()
+			container.Resources.Limits[k] = v.DeepCopy()
 			setLimits = append(setLimits, string(k))
 		}
 	}
 	for k, v := range defaultRequirements.Requests {
 		_, found := container.Resources.Requests[k]
 		if !found {
-			container.Resources.Requests[k] = *v.Copy()
+			container.Resources.Requests[k] = v.DeepCopy()
 			setRequests = append(setRequests, string(k))
 		}
 	}
