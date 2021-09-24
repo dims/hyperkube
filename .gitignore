@@ -137,3 +137,4 @@ zz_generated.openapi.go
 
 # binaries
 /bin
+hyperkube
