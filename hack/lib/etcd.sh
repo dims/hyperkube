@@ -117,6 +117,10 @@ kube::etcd::install() {
     os=$(kube::util::host_os)
     arch=$(kube::util::host_arch)
 
+    if [[ ! -d "${KUBE_ROOT}/third_party" ]]; then
+      mkdir "${KUBE_ROOT}/third_party";
+    fi
+
     cd "${KUBE_ROOT}/third_party" || return 1
     if [[ $(readlink etcd) == etcd-v${ETCD_VERSION}-${os}-* ]]; then
       kube::log::info "etcd v${ETCD_VERSION} already installed. To use:"
